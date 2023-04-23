@@ -16,7 +16,7 @@ app.use(express.urlencoded({ extended: true }));
 connect(
   "mongodb://127.0.0.1:27017/taskDB",
   { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log("Successsfully connected to the database"))
+  .then(() => console.log("Successfully connected to the database"))
   .catch((err) => { console.log(err); });
 
 const userSchema = new Schema({
@@ -46,12 +46,16 @@ const subTaskSchema = new Schema({
   _id: String,
   task_id: String,
   subDescription: String,
-  isComplete: Boolean, 
+  isComplete: Boolean,
 });
 
 const User = new model("User", userSchema);
 const Task = new model("Task", taskSchema);
 
+app.get('/', function (req, res) {
+  console.log("Hello World");
+  res.status(200).send('Hello World');
+})
 
 app.get('/register', function (req, res) {
   res.render('register.html');
@@ -61,11 +65,11 @@ app.get('/login', function (req, res) {
   res.render('login.html');
 })
 
-app.get('/forgot-password', function(req, res){
+app.get('/forgot-password', function (req, res) {
   res.render('forgot-password.html')
 })
 
-app.get('/reset-password', function(req, res){
+app.get('/reset-password', function (req, res) {
   res.render('reset-password.html')
 })
 
@@ -89,14 +93,14 @@ app.post('/register', function (req, res) {
         completeTasks: 0,
         otp: ''
       });
-      
+
       newUser.save()
-      .then(() => 
-        res.send("Register")
-      )
-      .catch((err) => { 
-        console.log(err); 
-      });0
+        .then(() =>
+          res.send("Register")
+        )
+        .catch((err) => {
+          console.log(err);
+        }); 0
     }
   });
 });
@@ -107,11 +111,11 @@ app.post('/login', async function (req, res) {
   try {
     const foundUser = await User.findOne({ email: email });
     if (foundUser) {
-      const comparision = await compare(password, foundUser.password);
-      console.log("Compa: ", comparision)
+      const comparison = await compare(password, foundUser.password);
+      console.log("comparison: ", comparison)
       console.log("Pass", password)
 
-      if (comparision) {
+      if (comparison) {
         console.log("Matches");
         res.send({
           "code": 200,
@@ -119,20 +123,23 @@ app.post('/login', async function (req, res) {
         });
       }
       else {
-        res.send({"code": 401,
-         "meassage": "Password does not match"
+        res.send({
+          "code": 401,
+          "message": "Password does not match"
         });
       }
     }
     else {
-      res.send({"code": 206,
-       "meassge": 'User not found'
+      res.send({
+        "code": 206,
+        "message": 'User not found'
       });
     }
   }
   catch {
-    res.send({"code": 206,
-     "message": "user not found"
+    res.send({
+      "code": 206,
+      "message": "user not found"
     });
   }
 });
@@ -140,8 +147,8 @@ app.post('/login', async function (req, res) {
 // Endpoint concerned with handling forgot password requests
 app.post("/forgot-password", async (req, res) => {
   const email = req.body.email;
-  const found = await User.findOne({email: email});
-  if(!found) {
+  const found = await User.findOne({ email: email });
+  if (!found) {
     return res.status(500).send('User not found');
   }
   try {
@@ -179,28 +186,28 @@ app.post("/forgot-password", async (req, res) => {
   }
 });
 
-app.post("/reset-password", async (req,res) => {
+app.post("/reset-password", async (req, res) => {
   const { email, otp, password } = req.body;
-  _hash(password, saltRounds, async function(err, hash){
-    if(err) throw err;
+  _hash(password, saltRounds, async function (err, hash) {
+    if (err) throw err;
     const newPassword = hash;
     try {
       // verify otp
-      const found = await User.findOne({email: email});
-      if(found.otp === otp) {
-        
-        await User.findOneAndUpdate({email: email}, {password: newPassword})
+      const found = await User.findOne({ email: email });
+      if (found.otp === otp) {
+
+        await User.findOneAndUpdate({ email: email }, { password: newPassword })
           .then(async () => {
-            await User.findOneAndUpdate({email: email}, {otp: ''})
+            await User.findOneAndUpdate({ email: email }, { otp: '' })
             console.log("Password updated successfully");
           });
-          res.send("Password updated successfully");
+        res.send("Password updated successfully");
       }
       else {
         res.send("wrong otp");
       }
     }
-    catch(error) {
+    catch (error) {
       console.log(error);
       res.status(401).send('OTP is invalid or has expired');
     }
@@ -209,10 +216,10 @@ app.post("/reset-password", async (req,res) => {
 
 app.get("/get-task", async (req, res) => {
   const email = req.body.email;
-  const found = await Task.findOne({email: email});
+  const found = await Task.findOne({ email: email });
   console.log(found)
 
-  if(found) {
+  if (found) {
     console.log(123);
     res.send(found);
   }
@@ -221,6 +228,6 @@ app.get("/get-task", async (req, res) => {
   }
 });
 
-app.listen(3000, function () {
-  console.log("Server started on port 3000");
+app.listen(5000, function () {
+  console.log("Server started on port 5000");
 });
