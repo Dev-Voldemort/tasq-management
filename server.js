@@ -96,7 +96,18 @@ app.post('/register', function (req, res) {
 
       newUser.save()
         .then(() =>
-          res.send("Register")
+          res.send({
+            "status_code": 200,
+            "success": "User registered",
+            "body": {
+              "firstName": req.body.firstName,
+              "lastName": req.body.lastName,
+              "userName": req.body.userName,
+              "email": req.body.email,
+              "totalTasks": newUser.totalTasks,
+              "completeTasks": newUser.completeTasks,
+            },
+          })
         )
         .catch((err) => {
           console.log(err);
