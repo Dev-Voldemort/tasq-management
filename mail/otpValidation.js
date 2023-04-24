@@ -33,8 +33,9 @@ async function sendOtp(req, res, message, otp) {
       console.log("Email sent: " + info.response);
       res.send("OTP sent successfully!");
     });
-  } catch {
-    res.send("User not found");
+  } catch (err) {
+    console.log(err);
+    res.status(500).send("Failed to send OTP email");
   }
 }
 
