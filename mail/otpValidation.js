@@ -31,7 +31,11 @@ async function sendOtp(req, res, message, otp) {
         return res.status(500).send("Failed to send email");
       }
       console.log("Email sent: " + info.response);
-      res.send("OTP sent successfully!");
+      // res.send("OTP sent successfully!");
+      return res.send({
+        status_code: 200,
+        message: "OTP sent successfully!",
+      })
     });
   } catch (err) {
     console.log(err);

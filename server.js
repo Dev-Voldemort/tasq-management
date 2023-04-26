@@ -15,7 +15,11 @@ app.engine("html", ejs.renderFile);
 app.use(express.urlencoded({ extended: true }));
 
 app.get('/', function (req, res) {
-  res.status(200).send('Hello World');
+  // res.status(200).send('Hello World');
+  res.send({
+    status_code: 200,
+    message: "Hello World",
+  })
 })
 
 app.get("/register", function (req, res) {
@@ -249,13 +253,26 @@ app.post("/reset-password", async (req, res) => {
           // delete the OTP from the user's record in the database
           await User.findOneAndUpdate({ email: email }, { otp: "" });
         });
-        res.send("Password updated successfully");
+        // res.send("Password updated successfully");
+        res.send({
+          status_code: 200,
+          message: "Password updated successfully",
+        });
       } else {
-        res.send("wrong otp");
+        // res.send("wrong otp");
+        res.send({
+          status_code: 401,
+          message: "Wrong otp",
+        });
       }
     } catch (error) {
       console.log(error);
-      res.status(401).send("OTP is invalid or has expired");
+      // res.status(401).send("OTP is invalid or has expired");
+      res.send({
+        status_code: 401,
+        message: "OTP is invalid or has expired",
+      });
+
     }
   });
 });
