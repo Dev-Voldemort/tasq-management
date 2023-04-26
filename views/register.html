@@ -9,14 +9,6 @@
   </head>
   <body>
     <form action="/register" method="post">
-      <!-- <label for="username">Username:</label>
-        <input type="text" id="username" name="username" required>
-
-        <label for="username">First Name:</label>
-        <input type="text" id="firstName" name="firstName" required>
-
-        <label for="username">Last Name:</label>
-        <input type="text" id="lastName" name="lastName" required> -->
 
       <label for="username">Email:</label>
       <input type="email" id="email" name="email" required />
@@ -24,7 +16,23 @@
       <label for="password">Password:</label>
       <input type="password" id="password" name="password" required />
 
+      <label for="isManager">Are you a Manager? </label>
+      <input type="checkbox" id="isManager" name="isManager" />
+      
       <button type="submit">Register</button>
     </form>
+
+    <!-- <form action="/register-manager" method="post"> -->
+
+      <!-- <label for="username">Email:</label>
+      <input type="email" id="email" name="email" required />
+
+      <label for="password">Password:</label>
+      <input type="password" id="password" name="password" required />
+
+      <label for="isManager">Are you a Manager? </label>
+      <input type="checkbox" id="isManager" name="isManager" />
+      <button type="submit">Register</button>
+    </form> -->
   </body>
 </html>

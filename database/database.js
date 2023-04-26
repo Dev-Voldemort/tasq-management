@@ -27,16 +27,35 @@ const userSchema = new mongoose.Schema(
   { versionKey: false }
 );
 
+const managerSchema = new mongoose.Schema(
+  {
+    firstName: String,
+    lastName: String,
+    userName: String,
+    email: String,
+    password: String,
+    totalTasks: Number,
+    users: [String],
+    otp: String,
+    isVerified: Boolean,
+  },
+  { versionKey: false }
+);
+
 const taskSchema = new mongoose.Schema(
   {
+    _id: String,
     email: String,
+    title: String,
     description: String,
     start: String,
     end: String,
     subTasks: String,
+    remarks: String,
     status: String,
     isCompleted: Boolean,
     priority: Boolean,
+    isPersonal: Boolean,
   },
   { versionKey: false }
 );
@@ -44,6 +63,8 @@ const taskSchema = new mongoose.Schema(
 const subTaskSchema = new mongoose.Schema(
   {
     task_id: String,
+    startDate: String,
+    endDate: String,
     subDescription: String,
     isComplete: Boolean,
   },
@@ -51,6 +72,8 @@ const subTaskSchema = new mongoose.Schema(
 );
 
 const User = new mongoose.model("User", userSchema);
+const Manager = new mongoose.model("Manager", managerSchema);
 const Task = new mongoose.model("Task", taskSchema);
+const SubTask = new mongoose.model("SubTask", subTaskSchema);
 
-export { User, Task };
+export { User, Task, Manager, SubTask };
