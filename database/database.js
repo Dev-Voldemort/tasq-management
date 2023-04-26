@@ -9,7 +9,7 @@ mongoose
   })
   .then(() => console.log("Successfully connected to the database"))
   .catch((err) => {
-    console.log(err);
+    console.log("Error connecting to the database " + err);
   });
 
 const userSchema = new mongoose.Schema(

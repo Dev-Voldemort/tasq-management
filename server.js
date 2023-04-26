@@ -14,6 +14,10 @@ const app = express();
 app.engine("html", ejs.renderFile);
 app.use(express.urlencoded({ extended: true }));
 
+app.get('/', function (req, res) {
+  res.status(200).send('Hello World');
+})
+
 app.get("/register", function (req, res) {
   res.render("register.html");
 });
@@ -35,10 +39,11 @@ app.post("/register", function (req, res) {
   //Hash the password using a third-party library and a salt value. The callback function is executed once the hash is complete or an error occurs.
   _hash(req.body.password, saltRounds, async (err, hash) => {
     //Check if the user with the same email already exists in the database.
-    const found = await User.find({ email: req.body.email });
+    console.log(req.body);
+    const found = await User.findOne({ email: req.body.email });
 
     //If the email already exists and the user has not been verified, send a response with a status code of 206 and a message of "Email exists".
-    if (found.length > 0 && req.body.isVerified === false) {
+    if (found && req.body.isVerified === true) {
       res.send({
         status_code: 206,
         message: "Email exists",
