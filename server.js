@@ -58,8 +58,10 @@ app.post("/register", async (req, res) => {
   } = req.body;
 
   let Model;
-  if (isManager) Model = Manager;
-  else Model = User;
+  if(isManager) {
+    Model = Manager;
+  }
+  else if(!isManager) Model = User;
   //Hash the password using a third-party library and a salt value. The callback function is executed once the hash is complete or an error occurs.
   _hash(password, saltRounds, async (err, hash) => {
     //Check if the user with the same email already exists in the database.
@@ -80,7 +82,7 @@ app.post("/register", async (req, res) => {
 
       //Create a new user object using the data provided in the request body.
       let newUser;
-      if (isManager) {
+      if(isManager) {
         newUser = new Model({
           firstName: firstName,
           lastName: lastName,
@@ -94,7 +96,7 @@ app.post("/register", async (req, res) => {
           otp: otp,
           isVerified: false,
         });
-      } else {
+      } else if(!isManager) {
         newUser = new Model({
           firstName: firstName,
           lastName: lastName,
@@ -140,8 +142,10 @@ app.post("/validate-email", async (req, res) => {
   const { email, otp, isManager } = req.body;
 
   let Model;
-  if (isManager) Model = Manager;
-  else Model = User;
+  if(isManager) {
+    Model = Manager;
+  }
+  else if(!isManager) Model = User;
 
   try {
     //Find the user with the given email address in the database.
@@ -179,8 +183,13 @@ app.post("/login", async function (req, res) {
   const { email, password, isManager } = req.body;
 
   let Model;
-  if (isManager) Model = Manager;
-  else Model = User;
+  if(isManager) {
+    Model = Manager;
+  }
+  else if(!isManager) Model = User;
+
+  console.log("Model:", Model);
+  console.log("isManager:", isManager);
   try {
     // Find the user with the given email address in the database.
     const foundUser = await Model.findOne({ email: email });
@@ -230,14 +239,14 @@ app.post("/login", async function (req, res) {
 //! use it for org-user login as well
 app.post("/forgot-password", async (req, res) => {
   const { email, isManager } = req.body;
-
   let Model;
-  if (isManager) Model = Manager;
-  else Model = User;
+  if(isManager) {
+    Model = Manager;
+  }
+  else if(!isManager) Model = User;
 
   // Find the user associated with the given email
   const foundUser = await Model.findOne({ email: email });
-
   // If the user is not found, return an error response
   if (!foundUser) {
     return res.status(404).send("User not found");
@@ -257,11 +266,18 @@ app.post("/forgot-password", async (req, res) => {
 app.post("/reset-password", async (req, res) => {
   // email, otp and password that came from front end
   const { email, otp, password, isManager } = req.body;
-
-  let Model = User;
-  if (isManager) Model = Manager;
+  console.log("isMana:",isManager);
+  let Model;
+  if(isManager) {
+    Model = Manager;
+  }
+  else if(!isManager) Model = User;
+  console.log("model:",Model);
   // generate a hashed password from the plain text password
-  const newPassword = bcrypt.hashSync(password, saltRounds);
+  let newPassword;
+  _hash(password, saltRounds, async (err, hash) => {
+    newPassword = hash;
+  });
   try {
     // verify otp
     const found = await Model.findOne({ email: email });
@@ -338,11 +354,8 @@ app.get("/get-task", async (req, res) => {
   try {
     const foundTasks = await Task.findMany({
       where: {
-        AND: [
-          {email:email},
-          {isPersonal:isPersonal},
-        ]
-      }
+        AND: [{ email: email }, { isPersonal: isPersonal }],
+      },
     });
     if (!foundTasks) {
       res.send("No tasks found");
@@ -392,6 +405,6 @@ app.post("/edit-task", async (req, res) => {
   }
 });
 
-app.listen(3000, function () {
+app.listen(5000, function () {
   console.log("Server started on port 3000");
 });
