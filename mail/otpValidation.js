@@ -3,7 +3,7 @@ dotenv.config();
 import { createTransport } from "nodemailer";
 import { User } from "../database/database.js";
 
-async function sendOtp(req, res, message, otp) {
+async function sendOtp(req, res, subject, message) {
   const email = req.body.email;
   try {
     await User.findOneAndUpdate({ email: email }, { otp: otp });
@@ -21,8 +21,8 @@ async function sendOtp(req, res, message, otp) {
     const mailOptions = {
       from: process.env.EMAIL_USERNAME,
       to: email,
-      subject: message,
-      text: `Your OTP is ${otp}`,
+      subject: subject,
+      text: message,
     };
 
     transporter.sendMail(mailOptions, (error, info) => {

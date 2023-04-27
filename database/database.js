@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
 dotenv.config();
-import mongoose from "mongoose";
+import mongoose, { Mongoose } from "mongoose";
 
 mongoose
   .connect(process.env.MONGODB_URI, {
@@ -17,6 +17,7 @@ const userSchema = new mongoose.Schema(
     firstName: String,
     lastName: String,
     userName: String,
+    position: String,
     email: String,
     password: String,
     totalTasks: Number,
@@ -32,16 +33,25 @@ const managerSchema = new mongoose.Schema(
     firstName: String,
     lastName: String,
     userName: String,
+    firmName: String,
+    position: String,
     email: String,
     password: String,
     totalTasks: Number,
-    users: [String],
+    users: [
+      {
+        email: String,
+        position: String,
+      },
+    ],
     otp: String,
     isVerified: Boolean,
   },
   { versionKey: false }
 );
 
+//? for personal tasks, status -> inProgress,completed,runningLate,aborted.
+//? for org tasks, status -> assigned,inProgress,completed,approved,runningLate,underReview
 const taskSchema = new mongoose.Schema(
   {
     _id: String,
@@ -50,30 +60,35 @@ const taskSchema = new mongoose.Schema(
     description: String,
     start: String,
     end: String,
-    subTasks: String,
-    remarks: String,
-    status: String,
+    status: String, 
     isCompleted: Boolean,
-    priority: Boolean,
     isPersonal: Boolean,
   },
   { versionKey: false }
 );
 
-const subTaskSchema = new mongoose.Schema(
+//! Needs to be tested
+//TODO: Make get,post routes
+//TODO: @Rahul make task and remarks coordinate with each other
+const remarkSchema = new mongoose.Schema(
   {
-    task_id: String,
-    startDate: String,
-    endDate: String,
-    subDescription: String,
-    isComplete: Boolean,
+    remarks: [
+      {
+        //? for .get '_id' is required:
+        task_id: String,
+        email: String,
+        message: String,
+        dateTime: String,
+      },
+    ],
   },
   { versionKey: false }
 );
 
+
 const User = new mongoose.model("User", userSchema);
 const Manager = new mongoose.model("Manager", managerSchema);
 const Task = new mongoose.model("Task", taskSchema);
-const SubTask = new mongoose.model("SubTask", subTaskSchema);
+const Remarks = new mongoose.model("Remarks", remarkSchema);
 
-export { User, Task, Manager, SubTask };
+export { User, Task, Manager, Remarks };

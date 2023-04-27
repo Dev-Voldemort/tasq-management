@@ -1,3 +1,5 @@
+//! change structure of sendOtp
+
 import dotenv from "dotenv";
 dotenv.config();
 import express from "express";
@@ -44,7 +46,8 @@ app.get("/add-user", function (req, res) {
 
 // This route handler handles a POST request to the "/register" endpoint to register a new user.
 app.post("/register", (req, res) => {
-  const { firstName, lastName, userName, email, password, isManager } = req.body;
+  const { firstName, lastName, userName, email, password, isManager } =
+    req.body;
 
   let Model;
   if (isManager) Model = Manager;
@@ -64,6 +67,8 @@ app.post("/register", (req, res) => {
       await sendOtp(req, res, "Verification OTP", otp);
 
       //Create a new user object using the data provided in the request body.
+      //TODO: Make changes as per dbModel
+      //! checkout all schemas
       const newUser = new Model({
         firstName: firstName,
         lastName: lastName,
@@ -101,6 +106,7 @@ app.post("/register", (req, res) => {
   });
 });
 
+//! Optimize code
 //This route handler handles a POST request to the "/validate-email" endpoint to validate the user's email and verify the OTP (one-time password) provided by the user.
 app.post("/validate-email", async (req, res) => {
   //Extract the email and OTP from the request body.
@@ -176,6 +182,7 @@ app.post("/login", async function (req, res) {
       if (!foundUser.isVerified) {
         // If the user is not verified, send a response with a status code of 200 and a message of "User must verify the email".
         return res.send({
+          status_code: 402,
           message: "User must verify the email",
         });
       }
@@ -213,6 +220,7 @@ app.post("/login", async function (req, res) {
 });
 
 // Endpoint for handling forgot password requests
+//! use it for org-user login as well
 app.post("/forgot-password", async (req, res) => {
   const email = req.body.email;
 
@@ -228,6 +236,7 @@ app.post("/forgot-password", async (req, res) => {
   const otp = generate(6, { upperCase: false, specialChars: false });
 
   // Send the OTP to the user's email address
+  //TODO change according to sendOtp structure
   sendOtp(req, res, "Reset password OTP", otp);
 });
 
@@ -278,38 +287,83 @@ app.post("/reset-password", async (req, res) => {
 });
 
 app.post("/add-user", async (req, res) => {
-  const { email, userEmail } = req.body;
+  const { managerEmail, userEmail, userPosition } = req.body;
+  const userPassword = generate(10, { upperCase: true, specialChars: true });
+
+  //* [subject] = subject of the email:
+  //TODO: make poetic messageMail:
+  const message = `Your password is ${userPassword}`;
+  await sendOtp(req, res, subject, message);
 
   try {
+    // TODO: push via spread operator:
     await Manager.findOneAndUpdate(
-      { email: email },
-      { $push: { users: { $each: [userEmail] } } }
+      { email: managerEmail },
+      {
+        $push: {
+          users: { $each: { email: userEmail, position: userPosition } },
+        },
+      }
     );
+
+    //TODO: register the user:
+    await User.findOneAndUpdate();
     res.send("User added successfully");
   } catch (err) {
     console.log("Error in adding user: ", err);
-    res.status(500).json({ error: 'Error in adding user' });
+    res.status(500).json({ error: "Error in adding user" });
   }
 });
 
-// app.get("/get-task", async (req, res) => {
-//   const { email } = req.body;
+app.get("/get-task", async (req, res) => {
+  const { email, isPersonal } = req.body;
 
-//   try {
-//     const foundUser = await Task.findMany({ email: email });
-//     if(!foundUser) {
-//       res.send("No tasks found")
-//     }
-//     else {
-//       const subTask = await SubTask.findMany({task_id: foundUser._id});
-//       res.send({foundUser,subTask});
-//     }
-//   }
-//   catch(err) {
-//     console.log(err);
-//     res.send("Error getting the tasks");
-//   }
-// });
+  try {
+    const foundTasks = await Task.findMany({ email: email });
+    if (!foundTasks) {
+      res.send("No tasks found");
+    } else {
+      //! filter tasks for personal/org tasks
+      res.send({
+        tasks: foundTasks,
+      });
+    }
+  } catch (err) {
+    console.log(err);
+    res.send("Error getting the tasks");
+  }
+});
+
+app.post("/add-task", async (req, res) => {
+  const { email, title, description, start, end, isPersonal } = req.body;
+
+  try {
+    const newTask = new Task({
+      email: email,
+      title: title,
+      description: description,
+      start: start,
+      end: end,
+      status: "assigned", // assigned,inProgress,completed,approved,runningLate
+      isCompleted: false,
+      isPersonal: isPersonal,
+    });
+
+    await newTask.save();
+  } catch (err) {
+    console.log(err);
+  }
+});
+
+//TODO: check how to update whole JSON object in findOneAndUpdate 
+app.post("/edit-task", async (req, res) => {
+  const { _id, title, description, start, end, isPersonal } = req.body;
+  try {
+    await Task.findOneAndUpdate({ _id: id });
+  } catch (err) {
+    console.log(err);
+  }
+});
 
 app.listen(3000, function () {
   console.log("Server started on port 3000");
