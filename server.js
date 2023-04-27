@@ -19,10 +19,6 @@ app.use(express.urlencoded({ extended: true }));
 
 app.get("/", function (req, res) {
   res.status(200).send("Hello World");
-  res.send({
-    status_code: 200,
-    message: "Hello World",
-  });
 });
 
 app.get("/register", function (req, res) {
@@ -188,9 +184,6 @@ app.post("/login", async function (req, res) {
     if (err) console.log(err);
     try {
       const foundUser = await Model.findOne({ email: email });
-      console.log(hash);
-      console.log(password);
-      console.log(foundUser.password);
 
       if (foundUser) {
         if (!foundUser.isVerified) {
@@ -219,6 +212,7 @@ app.post("/login", async function (req, res) {
         });
       }
     } catch (err) {
+      console.log("login - catch error = ", err);
       return res.send({
         status_code: 206,
         message: err,
@@ -266,39 +260,39 @@ app.post("/reset-password", async (req, res) => {
   console.log("model:", Model);
   // generate a hashed password from the plain text password
   _hash(password, saltRounds, async (err, hash) => {
-  try {
-    // verify otp
-    const found = await Model.findOne({ email: email });
+    try {
+      // verify otp
+      const found = await Model.findOne({ email: email });
 
-    // check if the OTP provided by the user matches the OTP in the database
-    if (found.otp === otp) {
-      // update the user's password with the new hashed password
-      await Model.findOneAndUpdate(
-        { email: email },
-        { password: hash }
-      ).then(async () => {
-        // delete the OTP from the user's record in the database
-        await Model.findOneAndUpdate({ email: email }, { otp: null });
-      });
-      // res.send("Password updated successfully");
-      res.send({
-        status_code: 200,
-        message: "Password updated successfully",
-      });
-    } else {
+      // check if the OTP provided by the user matches the OTP in the database
+      if (found.otp === otp) {
+        // update the user's password with the new hashed password
+        await Model.findOneAndUpdate(
+          { email: email },
+          { password: hash }
+        ).then(async () => {
+          // delete the OTP from the user's record in the database
+          await Model.findOneAndUpdate({ email: email }, { otp: null });
+        });
+        // res.send("Password updated successfully");
+        res.send({
+          status_code: 200,
+          message: "Password updated successfully",
+        });
+      } else {
+        res.send({
+          status_code: 401,
+          message: "Wrong otp",
+        });
+      }
+    } catch (error) {
+      console.log(error);
+      // res.status(401).send("OTP is invalid or has expired");
       res.send({
         status_code: 401,
-        message: "Wrong otp",
+        message: "OTP is invalid or has expired",
       });
     }
-  } catch (error) {
-    console.log(error);
-    // res.status(401).send("OTP is invalid or has expired");
-    res.send({
-      status_code: 401,
-      message: "OTP is invalid or has expired",
-    });
-  }
   });
 });
 
@@ -393,6 +387,6 @@ app.post("/edit-task", async (req, res) => {
   }
 });
 
-app.listen(5000, function () {
+app.listen(3000, function () {
   console.log("Server started on port 3000");
 });
