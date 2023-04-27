@@ -8,7 +8,7 @@ import ejs, { render } from "ejs";
 import { hash as _hash, compare } from "bcrypt";
 const saltRounds = 10;
 
-import { User, Manager, SubTask } from "./database/database.js";
+import { User, Manager } from "./database/database.js";
 import { sendOtp } from "./mail/otpValidation.js";
 
 const app = express();
@@ -16,13 +16,13 @@ const app = express();
 app.engine("html", ejs.renderFile);
 app.use(express.urlencoded({ extended: true }));
 
-app.get('/', function (req, res) {
+app.get("/", function (req, res) {
   // res.status(200).send('Hello World');
   res.send({
     status_code: 200,
     message: "Hello World",
-  })
-})
+  });
+});
 
 app.get("/register", function (req, res) {
   res.render("register.html");
@@ -45,9 +45,17 @@ app.get("/add-user", function (req, res) {
 });
 
 // This route handler handles a POST request to the "/register" endpoint to register a new user.
-app.post("/register", (req, res) => {
-  const { firstName, lastName, userName, email, password, isManager } =
-    req.body;
+app.post("/register", async (req, res) => {
+  const {
+    firstName,
+    lastName,
+    userName,
+    email,
+    password,
+    isManager,
+    firmName,
+    designation,
+  } = req.body;
 
   let Model;
   if (isManager) Model = Manager;
@@ -56,31 +64,50 @@ app.post("/register", (req, res) => {
   _hash(password, saltRounds, async (err, hash) => {
     //Check if the user with the same email already exists in the database.
     console.log(req.body);
-    const foundUser = await Model.findOneOne({ email: email });
+    const foundUser = await Model.findOne({ email: email });
 
     //If the email already exists and the user has not been verified, send a response with a status code of 206 and a message of "Email exists".
-    if (foundUser && foundUser.isVerified) {
-      res.status(206).send({ message: "Email already exists" });
+    if (foundUser) {
+      if (!foundUser.isVerified) {
+        return res.status(206).send({ message: "User must verify the email" });
+      } else res.status(206).send({ message: "Email already exists" });
     } else {
       //Generate a six-digit OTP (one-time password) using a third-party library and send it to the user's email address for verification.
       const otp = generate(6, { upperCase: false, specialChars: false });
-      await sendOtp(req, res, "Verification OTP", otp);
+      const msg = `Your OTP  for Email verification is ${otp}`;
+      const subject = "Verification OTP";
+      await sendOtp(req, res, subject, msg, otp);
 
       //Create a new user object using the data provided in the request body.
-      //TODO: Make changes as per dbModel
-      //! checkout all schemas
-      const newUser = new Model({
-        firstName: firstName,
-        lastName: lastName,
-        userName: userName,
-        email: email,
-        password: hash,
-        users: [],
-        totalTasks: 0,
-        completeTasks: 0,
-        otp: otp,
-        isVerified: false,
-      });
+      let newUser;
+      if (isManager) {
+        newUser = new Model({
+          firstName: firstName,
+          lastName: lastName,
+          userName: userName,
+          email: email,
+          firmName: firmName,
+          designation: designation,
+          password: hash,
+          users: [],
+          totalTasks: 0,
+          otp: otp,
+          isVerified: false,
+        });
+      } else {
+        newUser = new Model({
+          firstName: firstName,
+          lastName: lastName,
+          userName: userName,
+          designation: designation,
+          email: email,
+          password: hash,
+          totalTasks: 0,
+          completeTasks: 0,
+          otp: otp,
+          isVerified: false,
+        });
+      }
 
       //Save the newly created user object to the database as a non-verified user.
       newUser
@@ -112,9 +139,13 @@ app.post("/validate-email", async (req, res) => {
   //Extract the email and OTP from the request body.
   const { email, otp, isManager } = req.body;
 
-  if (isManager) {
+  let Model;
+  if (isManager) Model = Manager;
+  else Model = User;
+
+  try {
     //Find the user with the given email address in the database.
-    const foundUser = await Manager.findOne({ email: email });
+    const foundUser = await Model.findOne({ email: email });
 
     //If the user is not found, send a response with a message of "User not found".
     if (!foundUser) {
@@ -123,9 +154,9 @@ app.post("/validate-email", async (req, res) => {
       //If the OTP matches the OTP stored in the user object, delete the OTP and mark the user as verified in the database.
       if (foundUser.otp === otp) {
         // deleting the otp and marking user as verified
-        await Manager.updateOne(
+        await Model.updateOne(
           { email: email },
-          { $set: { otp: "", isVerified: true } }
+          { $set: { otp: null, isVerified: true } }
         );
         //Send a response with a status code of 200 and a message of "Email has been verified successfully".
         res.send({
@@ -137,31 +168,8 @@ app.post("/validate-email", async (req, res) => {
         res.send("wrong otp");
       }
     }
-  } else {
-    //Find the user with the given email address in the database.
-    const foundUser = await User.findOne({ email: email });
-
-    //If the user is not found, send a response with a message of "User not found".
-    if (!foundUser) {
-      res.send("User not found");
-    } else {
-      //If the OTP matches the OTP stored in the user object, delete the OTP and mark the user as verified in the database.
-      if (foundUser.otp === otp) {
-        // deleting the otp and marking user as verified
-        await User.updateOne(
-          { email: email },
-          { $set: { otp: "", isVerified: true } }
-        );
-        //Send a response with a status code of 200 and a message of "Email has been verified successfully".
-        res.send({
-          status_code: 200,
-          message: "Email has been verified successfully",
-        });
-      } else {
-        //If the OTP does not match the OTP stored in the user object, send a response with a message of "wrong otp".
-        res.send("wrong otp");
-      }
-    }
+  } catch (err) {
+    console.log(err);
   }
 });
 
@@ -189,7 +197,6 @@ app.post("/login", async function (req, res) {
 
       // Compare the password provided by the user with the hashed password stored in the user object.
       const comparison = await compare(password, foundUser.password);
-
       // If the password matches, send a response with a status code of 200 and the user object.
       if (comparison) {
         return res.send({
@@ -222,10 +229,14 @@ app.post("/login", async function (req, res) {
 // Endpoint for handling forgot password requests
 //! use it for org-user login as well
 app.post("/forgot-password", async (req, res) => {
-  const email = req.body.email;
+  const { email, isManager } = req.body;
+
+  let Model;
+  if (isManager) Model = Manager;
+  else Model = User;
 
   // Find the user associated with the given email
-  const foundUser = await User.findOne({ email: email });
+  const foundUser = await Model.findOne({ email: email });
 
   // If the user is not found, return an error response
   if (!foundUser) {
@@ -237,76 +248,82 @@ app.post("/forgot-password", async (req, res) => {
 
   // Send the OTP to the user's email address
   //TODO change according to sendOtp structure
-  sendOtp(req, res, "Reset password OTP", otp);
+  const msg = `Your OTP for password reset is ${otp}`;
+  const subject = "Reset password OTP";
+  await sendOtp(req, res, subject, msg, otp);
+  await Model.updateOne({ email: email }, { $set: { otp: otp } });
 });
 
 app.post("/reset-password", async (req, res) => {
   // email, otp and password that came from front end
-  const { email, otp, password } = req.body;
+  const { email, otp, password, isManager } = req.body;
 
+  let Model = User;
+  if (isManager) Model = Manager;
   // generate a hashed password from the plain text password
-  _hash(password, saltRounds, async function (err, hash) {
-    if (err) console.log("Reset Password: ", err);
-    const newPassword = hash;
-    try {
-      // verify otp
-      const found = await User.findOne({ email: email });
+  const newPassword = bcrypt.hashSync(password, saltRounds);
+  try {
+    // verify otp
+    const found = await Model.findOne({ email: email });
 
-      // check if the OTP provided by the user matches the OTP in the database
-      if (found.otp === otp) {
-        // update the user's password with the new hashed password
-        await User.findOneAndUpdate(
-          { email: email },
-          { password: newPassword }
-        ).then(async () => {
-          // delete the OTP from the user's record in the database
-          await User.findOneAndUpdate({ email: email }, { otp: "" });
-        });
-        // res.send("Password updated successfully");
-        res.send({
-          status_code: 200,
-          message: "Password updated successfully",
-        });
-      } else {
-        // res.send("wrong otp");
-        res.send({
-          status_code: 401,
-          message: "Wrong otp",
-        });
-      }
-    } catch (error) {
-      console.log(error);
-      // res.status(401).send("OTP is invalid or has expired");
+    // check if the OTP provided by the user matches the OTP in the database
+    if (found.otp === otp) {
+      // update the user's password with the new hashed password
+      await Model.findOneAndUpdate(
+        { email: email },
+        { password: newPassword }
+      ).then(async () => {
+        // delete the OTP from the user's record in the database
+        await Model.findOneAndUpdate({ email: email }, { otp: null });
+      });
+      // res.send("Password updated successfully");
+      res.send({
+        status_code: 200,
+        message: "Password updated successfully",
+      });
+    } else {
       res.send({
         status_code: 401,
-        message: "OTP is invalid or has expired",
+        message: "Wrong otp",
       });
-
     }
-  });
+  } catch (error) {
+    console.log(error);
+    // res.status(401).send("OTP is invalid or has expired");
+    res.send({
+      status_code: 401,
+      message: "OTP is invalid or has expired",
+    });
+  }
+  // });
 });
 
 app.post("/add-user", async (req, res) => {
-  const { managerEmail, userEmail, userPosition } = req.body;
+  const { managerEmail, email, designation } = req.body;
   const userPassword = generate(10, { upperCase: true, specialChars: true });
 
   //* [subject] = subject of the email:
   //TODO: make poetic messageMail:
+  const subject = "Login credentials";
   const message = `Your password is ${userPassword}`;
   await sendOtp(req, res, subject, message);
 
+  const addObject = {
+    email: email,
+    designation: designation,
+  };
   try {
-    // TODO: push via spread operator:
-    await Manager.findOneAndUpdate(
+    const foundManager = await Manager.findOne({ email: managerEmail });
+
+    const users = [...foundManager.users, addObject];
+    await Manager.updateOne(
       { email: managerEmail },
-      {
-        $push: {
-          users: { $each: { email: userEmail, position: userPosition } },
-        },
-      }
+      { $set: { users: users } }
     );
 
     //TODO: register the user:
+
+    //! what if the user already exists?
     await User.findOneAndUpdate();
     res.send("User added successfully");
   } catch (err) {
@@ -319,11 +336,17 @@ app.get("/get-task", async (req, res) => {
   const { email, isPersonal } = req.body;
 
   try {
-    const foundTasks = await Task.findMany({ email: email });
+    const foundTasks = await Task.findMany({
+      where: {
+        AND: [
+          {email:email},
+          {isPersonal:isPersonal},
+        ]
+      }
+    });
     if (!foundTasks) {
       res.send("No tasks found");
     } else {
-      //! filter tasks for personal/org tasks
       res.send({
         tasks: foundTasks,
       });
@@ -350,12 +373,16 @@ app.post("/add-task", async (req, res) => {
     });
 
     await newTask.save();
+    res.send({
+      status_code: 200,
+      message: "Task added successfully",
+    });
   } catch (err) {
     console.log(err);
   }
 });
 
-//TODO: check how to update whole JSON object in findOneAndUpdate 
+//TODO: check how to update whole JSON object in findOneAndUpdate
 app.post("/edit-task", async (req, res) => {
   const { _id, title, description, start, end, isPersonal } = req.body;
   try {
