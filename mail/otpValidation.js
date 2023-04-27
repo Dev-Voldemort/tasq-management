@@ -3,7 +3,7 @@ dotenv.config();
 import { createTransport } from "nodemailer";
 import { User } from "../database/database.js";
 
-async function sendOtp(req, res, subject, message) {
+async function sendOtp(req, res, subject, message, otp) {
   const email = req.body.email;
   try {
     await User.findOneAndUpdate({ email: email }, { otp: otp });
