@@ -1,4 +1,4 @@
-//! change structure of sendOtp
+//! change statusCode style
 
 import dotenv from "dotenv";
 dotenv.config();
@@ -297,19 +297,21 @@ app.post("/reset-password", async (req, res) => {
 });
 
 app.post("/add-user", async (req, res) => {
-  const { managerEmail, email, designation } = req.body;
+  //TODO: add assignee email and designation -> through which user must reg/login
+  const { managerEmail, email, emailTo, designation, note } = req.body;
   const userPassword = generate(10, { upperCase: true, specialChars: true });
 
   //* [subject] = subject of the email:
   //TODO: make poetic messageMail:
   const subject = "Login credentials";
-  const message = `Your password is ${userPassword}`;
+  const message = `Hey ${firstName} ${lastName}, Your official email is ${emailTo} and password is ${userPassword}. You are now ${designation}. ${note}`;
+  // const message = `Your official email is ${emailTo} and password is ${userPassword}. You are now ${designation}. Welcome Remarks: ${note}`;
   await sendOtp(req, res, subject, message);
 
   const addObject = {
-    email: email,
+    emailTo: emailTo,
     designation: designation,
-  };
+  }
   try {
     const foundManager = await Manager.findOne({ email: managerEmail });
 
@@ -318,11 +320,6 @@ app.post("/add-user", async (req, res) => {
       { email: managerEmail },
       { $set: { users: users } }
     );
-
-    //TODO: register the user:
-
-    //! what if the user already exists?
-    await User.findOneAndUpdate();
     res.send("User added successfully");
   } catch (err) {
     console.log("Error in adding user: ", err);
@@ -334,11 +331,7 @@ app.get("/get-task", async (req, res) => {
   const { email, isPersonal } = req.body;
 
   try {
-    const foundTasks = await Task.findMany({
-      where: {
-        AND: [{ email: email }, { isPersonal: isPersonal }],
-      },
-    });
+    const foundTasks = await Task.find({ email: email, isPersonal: isPersonal });
     if (!foundTasks) {
       res.send("No tasks found");
     } else {
@@ -379,11 +372,35 @@ app.post("/add-task", async (req, res) => {
 
 //TODO: check how to update whole JSON object in findOneAndUpdate
 app.post("/edit-task", async (req, res) => {
-  const { _id, title, description, start, end, isPersonal } = req.body;
+  const {
+    _id,
+    email,
+    title,
+    description,
+    start,
+    end,
+    status,
+    isCompleted,
+    isPersonal,
+  } = req.body;
   try {
-    await Task.findOneAndUpdate({ _id: id });
+    await Task.findOneAndUpdate(
+      { _id: _id },
+      {
+        _id: _id,
+        email: email,
+        title: title,
+        description: description,
+        start: start,
+        end: end,
+        status: status,
+        isCompleted: isCompleted,
+        isPersonal: isPersonal,
+      }
+    );
   } catch (err) {
     console.log(err);
+    res.send(err);
   }
 });
 
