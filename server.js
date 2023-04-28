@@ -60,7 +60,7 @@ app.post("/register", async (req, res) => {
   } else {
     Model = User;
   }
-  console.log("Model: ", Model, "isManager type: ", typeof(isManager));
+  console.log("Model: ", Model, "isManager type: ", typeof (isManager));
   //Hash the password using a third-party library and a salt value. The callback function is executed once the hash is complete or an error occurs.
   _hash(password, saltRounds, async (err, hash) => {
     //Check if the user with the same email already exists in the database.
@@ -115,12 +115,12 @@ app.post("/register", async (req, res) => {
         .save()
         .then(() =>
           //If the user is successfully saved to the database, send a response with a status code of 200 and a message of "User registered" along with the user object as the response body.
-          res.send({
-            status_code: 200,
+
+          res.status(200).send({
             message: "User registered",
             body: {
-              user: newUser,
-            },
+              user: newUser
+            }
           })
         )
         .catch((err) => {
@@ -153,7 +153,7 @@ app.post("/validate-email", async (req, res) => {
 
     //If the user is not found, send a response with a message of "User not found".
     if (!foundUser) {
-      res.send("User not found");
+      res.status(204).send({ message: "User not found" });
     } else {
       //If the OTP matches the OTP stored in the user object, delete the OTP and mark the user as verified in the database.
       if (foundUser.otp === otp) {
@@ -163,10 +163,8 @@ app.post("/validate-email", async (req, res) => {
           { $set: { otp: null, isVerified: true } }
         );
         //Send a response with a status code of 200 and a message of "Email has been verified successfully".
-        res.send({
-          status_code: 200,
-          message: "Email has been verified successfully",
-        });
+        //? @Kunal check
+        res.status(200).send({ message: "Emial has been verified successfully" })
       } else {
         //If the OTP does not match the OTP stored in the user object, send a response with a message of "wrong otp".
         res.send("wrong otp");
@@ -197,36 +195,31 @@ app.post("/login", async function (req, res) {
 
       if (foundUser) {
         if (!foundUser.isVerified) {
-          return res.send({
-            status_code: 402,
-            message: "User must verify the email",
-          });
+          //? @Kunal check
+          return res.status(402).send({ message: "User must verify the email" })
         }
 
         const comparison = await compare(password, foundUser.password);
         if (comparison) {
-          return res.send({
-            status_code: 200,
-            Model: foundUser,
-          });
+          //? @kunal check
+          return res.status(200).send({
+            message: "Login successfull",
+            body: {
+              model: foundUser
+            }
+          })
         } else {
-          return res.send({
-            status_code: 401,
-            message: "Password does not match",
-          });
+
+          return res.status(401).send({ message: "Password does not match" })
         }
       } else {
-        return res.send({
-          status_code: 206,
-          message: "User not found",
-        });
+        //? @Kunal check
+        return res.status(206).send({ message: "User not found" })
       }
     } catch (err) {
       console.log("login - catch error = ", err);
-      return res.send({
-        status_code: 206,
-        message: err,
-      });
+      //? @Kunal check
+      return res.status(206).send({ message: err })
     }
   });
 });
@@ -244,7 +237,8 @@ app.post("/forgot-password", async (req, res) => {
   const foundUser = await Model.findOne({ email: email });
   // If the user is not found, return an error response
   if (!foundUser) {
-    return res.status(404).send("User not found");
+    //? @Kunal check
+    return res.status(404).send({ message: "User not found" });
   }
 
   // Generate a 6-digit OTP for password reset
@@ -284,23 +278,16 @@ app.post("/reset-password", async (req, res) => {
           }
         );
         // res.send("Password updated successfully");
-        res.send({
-          status_code: 200,
-          message: "Password updated successfully",
-        });
+        //? @Kunal check
+        res.status(200).send({ message: "Password updated successfully", })
       } else {
-        res.send({
-          status_code: 401,
-          message: "Wrong otp",
-        });
+       //? @Kunal check
+        res.status(401).send({ message: "Wrong otp" })
       }
     } catch (error) {
       console.log(error);
-      // res.status(401).send("OTP is invalid or has expired");
-      res.send({
-        status_code: 401,
-        message: "OTP is invalid or has expired",
-      });
+      //? @Kunal check
+      res.status(401).send({ message: "OTP is invalid or has expired" });
     }
   });
 });
@@ -388,7 +375,8 @@ app.post("/add-user", async (req, res) => {
         //If there is an error while saving the user object to the database, log the error to the console.
         console.error(err);
       });
-      res.send("User added successfully");
+      //? @Kunal check
+      res.status(200).send({ message: "User added successfully" })
     });
   } catch (err) {
     console.log("Error in adding user: ", err);
@@ -447,10 +435,8 @@ app.post("/add-task", async (req, res) => {
     });
 
     await newTask.save();
-    res.send({
-      status_code: 200,
-      message: "Task added successfully",
-    });
+    //? @Kunal check
+    res.status(200).send({ message: "Task added successfully" })
   } catch (err) {
     console.log(err);
   }
