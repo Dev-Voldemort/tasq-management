@@ -172,12 +172,17 @@ app.post("/validate-email", async (req, res) => {
 });
 
 app.post("/login", async function (req, res) {
+
   const { email, password, isManager } = req.body;
 
   let Model;
-  if (isManager) {
+  if (isManager === true) {
     Model = Manager;
-  } else if (!isManager) Model = User;
+  } else {
+    Model = User;
+  }
+
+  console.log("Model", Model, "isManager", isManager);
 
   _hash(password, saltRounds, async (err, hash) => {
     if (err) console.log(err);
@@ -295,6 +300,8 @@ app.post("/reset-password", async (req, res) => {
 });
 
 app.post("/add-user", async (req, res) => {
+
+  console.log("add-user - req.body:", req.body);
   //TODO: add assignee email and designation -> through which user must reg/login
 
   // * [managerEmail] = email of the manager who is adding the user
@@ -339,24 +346,44 @@ app.post("/add-user", async (req, res) => {
       { $set: { users: users } }
     );
 
-    //Generate a six-digit OTP (one-time password) using a third-party library and send it to the user's email address for verification.
-    const newUser = new User({
-      firstName: firstName,
-      lastName: lastName,
-      designation: designation,
-      email: emailTo,
-      password: String,
-      totalTasks: 0,
-      completeTasks: 0,
-      otp: null,
-      isVerified: false,
-    });
+    // //Generate a six-digit OTP (one-time password) using a third-party library and send it to the user's email address for verification.
+    // const newUser = new User({
+    //   firstName: firstName,
+    //   lastName: lastName,
+    //   designation: designation,
+    //   email: emailTo,
+    //   password: String,
+    //   totalTasks: 0,
+    //   completeTasks: 0,
+    //   otp: null,
+    //   isVerified: false,
+    // });
 
-    await newUser.save().catch((err) => {
-      //If there is an error while saving the user object to the database, log the error to the console.
-      console.error(err);
+    // await newUser.save().catch((err) => {
+    //   //If there is an error while saving the user object to the database, log the error to the console.
+    //   console.error(err);
+    // });
+    // res.send("User added successfully");
+    _hash(userPassword, saltRounds, async (err, hash) => {
+      //Generate a six-digit OTP (one-time password) using a third-party library and send it to the user's email address for verification.
+      const newUser = new User({
+        firstName: firstName,
+        lastName: lastName,
+        designation: designation,
+        email: emailTo,
+        password: hash,
+        totalTasks: 0,
+        completeTasks: 0,
+        otp: null,
+        isVerified: false,
+      });
+
+      await newUser.save().catch((err) => {
+        //If there is an error while saving the user object to the database, log the error to the console.
+        console.error(err);
+      });
+      res.send("User added successfully");
     });
-    res.send("User added successfully");
   } catch (err) {
     console.log("Error in adding user: ", err);
     res.status(500).json({ error: "Error in adding user" });
@@ -367,7 +394,13 @@ app.post("/send-otp", async (req, res) => {
   const otp = generate(6, { upperCase: false, specialChars: false });
   const message = `Your OTP  for Email verification is ${otp}`;
   const subject = "Verification OTP";
-  sendOtp(req, res, subject, message, otp);
+  await sendOtp(req, res, subject, message, otp);
+
+  try {
+    await findOneAndUpdate({ email: req.body.email }, { $set: { otp: otp } });
+  } catch (error) {
+    console.log(error);
+  }
 });
 
 app.get("/get-task", async (req, res) => {
