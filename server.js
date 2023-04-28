@@ -298,7 +298,15 @@ app.post("/reset-password", async (req, res) => {
 
 app.post("/add-user", async (req, res) => {
   //TODO: add assignee email and designation -> through which user must reg/login
-  const { managerEmail, email, emailTo, designation, note } = req.body;
+
+  // * [managerEmail] = email of the manager who is adding the user
+  // * [email] = new email of user
+  // * [emailTo] = email of the user to be added
+  // * [designation] = designation of the user to be added
+  // * [note] = note to be sent to the user via email
+  // * [firstName] = first name of the user to be added
+  // * [lastName] = last name of the user to be added
+  const { managerEmail, email, emailTo, designation, note, firstName, lastName } = req.body;
   const userPassword = generate(10, { upperCase: true, specialChars: true });
 
   //* [subject] = subject of the email:
@@ -309,7 +317,7 @@ app.post("/add-user", async (req, res) => {
   await sendOtp(req, res, subject, message);
 
   const addObject = {
-    emailTo: emailTo,
+    email: emailTo,
     designation: designation,
   }
   try {
