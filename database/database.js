@@ -16,7 +16,6 @@ const userSchema = new mongoose.Schema(
   {
     firstName: String,
     lastName: String,
-    userName: String,
     designation: String,
     email: String,
     password: String,
@@ -32,7 +31,6 @@ const managerSchema = new mongoose.Schema(
   {
     firstName: String,
     lastName: String,
-    userName: String,
     firmName: String,
     designation: String,
     email: String,
