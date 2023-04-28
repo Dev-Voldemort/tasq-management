@@ -6,7 +6,6 @@ import express from "express";
 import { generate } from "otp-generator";
 import ejs, { render } from "ejs";
 import { hash as _hash, compare } from "bcrypt";
-import bcrypt from "bcrypt";
 const saltRounds = 10;
 
 import { User, Manager } from "./database/database.js";
@@ -267,13 +266,12 @@ app.post("/reset-password", async (req, res) => {
       // check if the OTP provided by the user matches the OTP in the database
       if (found.otp === otp) {
         // update the user's password with the new hashed password
-        await Model.findOneAndUpdate(
-          { email: email },
-          { password: hash }
-        ).then(async () => {
-          // delete the OTP from the user's record in the database
-          await Model.findOneAndUpdate({ email: email }, { otp: null });
-        });
+        await Model.findOneAndUpdate({ email: email }, { password: hash }).then(
+          async () => {
+            // delete the OTP from the user's record in the database
+            await Model.findOneAndUpdate({ email: email }, { otp: null });
+          }
+        );
         // res.send("Password updated successfully");
         res.send({
           status_code: 200,
@@ -306,7 +304,15 @@ app.post("/add-user", async (req, res) => {
   // * [note] = note to be sent to the user via email
   // * [firstName] = first name of the user to be added
   // * [lastName] = last name of the user to be added
-  const { managerEmail, email, emailTo, designation, note, firstName, lastName } = req.body;
+  const {
+    managerEmail,
+    email,
+    emailTo,
+    designation,
+    note,
+    firstName,
+    lastName,
+  } = req.body;
   const userPassword = generate(10, { upperCase: true, specialChars: true });
 
   //* [subject] = subject of the email:
@@ -318,12 +324,12 @@ app.post("/add-user", async (req, res) => {
   // * [sendOtp] will used to send the email to the user
   await sendOtp(req, res, subject, message);
 
-  // TODO: @Meet add the relevant comments 
-  // * 
+  // TODO: @Meet add the relevant comments
+  // *
   const addObject = {
     email: emailTo,
     designation: designation,
-  }
+  };
   try {
     const foundManager = await Manager.findOne({ email: managerEmail });
 
@@ -332,6 +338,24 @@ app.post("/add-user", async (req, res) => {
       { email: managerEmail },
       { $set: { users: users } }
     );
+
+    //Generate a six-digit OTP (one-time password) using a third-party library and send it to the user's email address for verification.
+    const newUser = new User({
+      firstName: firstName,
+      lastName: lastName,
+      designation: designation,
+      email: emailTo,
+      password: String,
+      totalTasks: 0,
+      completeTasks: 0,
+      otp: null,
+      isVerified: false,
+    });
+
+    await newUser.save().catch((err) => {
+      //If there is an error while saving the user object to the database, log the error to the console.
+      console.error(err);
+    });
     res.send("User added successfully");
   } catch (err) {
     console.log("Error in adding user: ", err);
@@ -339,11 +363,21 @@ app.post("/add-user", async (req, res) => {
   }
 });
 
+app.post("/send-otp", async (req, res) => {
+  const otp = generate(6, { upperCase: false, specialChars: false });
+  const message = `Your OTP  for Email verification is ${otp}`;
+  const subject = "Verification OTP";
+  sendOtp(req, res, subject, message, otp);
+});
+
 app.get("/get-task", async (req, res) => {
   const { email, isPersonal } = req.body;
 
   try {
-    const foundTasks = await Task.find({ email: email, isPersonal: isPersonal });
+    const foundTasks = await Task.find({
+      email: email,
+      isPersonal: isPersonal,
+    });
     if (!foundTasks) {
       res.send("No tasks found");
     } else {
