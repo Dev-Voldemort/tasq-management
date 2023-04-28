@@ -17,7 +17,7 @@ app.engine("html", ejs.renderFile);
 app.use(express.urlencoded({ extended: true }));
 
 app.get("/", function (req, res) {
-  res.status(200).send("Hello World");
+  res.status(200).send("Hello Worldddd");
 });
 
 app.get("/register", function (req, res) {
