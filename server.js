@@ -314,8 +314,12 @@ app.post("/add-user", async (req, res) => {
   const subject = "Login credentials";
   const message = `Hey ${firstName} ${lastName}, Your official email is ${emailTo} and password is ${userPassword}. You are now ${designation}. ${note}`;
   // const message = `Your official email is ${emailTo} and password is ${userPassword}. You are now ${designation}. Welcome Remarks: ${note}`;
+
+  // * [sendOtp] will used to send the email to the user
   await sendOtp(req, res, subject, message);
 
+  // TODO: @Meet add the relevant comments 
+  // * 
   const addObject = {
     email: emailTo,
     designation: designation,
