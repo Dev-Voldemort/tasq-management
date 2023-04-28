@@ -8,7 +8,7 @@ import ejs, { render } from "ejs";
 import { hash as _hash, compare } from "bcrypt";
 const saltRounds = 10;
 
-import { User, Manager } from "./database/database.js";
+import { User, Manager, Task } from "./database/database.js";
 import { sendOtp } from "./mail/otpValidation.js";
 
 const app = express();
@@ -54,9 +54,13 @@ app.post("/register", async (req, res) => {
   } = req.body;
 
   let Model;
-  if (isManager) {
+  // const bool = Boolean(isManager);
+  if (isManager === "true") {
     Model = Manager;
-  } else if (!isManager) Model = User;
+  } else {
+    Model = User;
+  }
+  console.log("Model: ", Model, "isManager type: ", typeof(isManager));
   //Hash the password using a third-party library and a salt value. The callback function is executed once the hash is complete or an error occurs.
   _hash(password, saltRounds, async (err, hash) => {
     //Check if the user with the same email already exists in the database.
@@ -137,9 +141,11 @@ app.post("/validate-email", async (req, res) => {
   const { email, otp, isManager } = req.body;
 
   let Model;
-  if (isManager) {
+  if (isManager === "true") {
     Model = Manager;
-  } else if (!isManager) Model = User;
+  } else if (isManager === "false") {
+    Model = User;
+  }
 
   try {
     //Find the user with the given email address in the database.
@@ -176,12 +182,12 @@ app.post("/login", async function (req, res) {
   const { email, password, isManager } = req.body;
 
   let Model;
-  if (isManager === true) {
+  if (isManager === "true") {
     Model = Manager;
   } else {
     Model = User;
   }
-
+  console.log(typeof isManager);
   console.log("Model", Model, "isManager", isManager);
 
   _hash(password, saltRounds, async (err, hash) => {
@@ -429,14 +435,15 @@ app.post("/add-task", async (req, res) => {
 
   try {
     const newTask = new Task({
+      // _id: _id,
       email: email,
       title: title,
       description: description,
       start: start,
       end: end,
-      status: "assigned", // assigned,inProgress,completed,approved,runningLate
+      status: isPersonal === "true" ? "Started" : "Assigned", // assigned,inProgress,completed,approved,runningLate
       isCompleted: false,
-      isPersonal: isPersonal,
+      isPersonal: isPersonal === "true" ? true : false,
     });
 
     await newTask.save();
