@@ -9,7 +9,7 @@ import ejs, { render } from "ejs";
 import { hash as _hash, compare } from "bcrypt";
 const saltRounds = 10;
 
-// import bodyParser from "body-parser";
+import bodyParser from "body-parser";
 import { User, Manager, Task } from "./database/database.js";
 import { sendOtp } from "./mail/otpValidation.js";
 
@@ -19,7 +19,7 @@ app.engine("html", ejs.renderFile);
 app.use(express.urlencoded({ extended: true }));
 
 //* it is for testing in Postman
-// app.use(bodyParser.json());
+app.use(bodyParser.json());
 
 app.get("/", function (req, res) {
   res.status(200).send("Hello World");
@@ -57,13 +57,8 @@ app.post("/register", async (req, res) => {
     designation,
   } = req.body;
 
-  let Model;
-  // const bool = Boolean(isManager);
-  if (isManager === "true") {
-    Model = Manager;
-  } else if(isManager === "false") {
-    Model = User;
-  }
+  const Model = isManager === "true" ? Manager : User;
+
   //Hash the password using a third-party library and a salt value. The callback function is executed once the hash is complete or an error occurs.
   _hash(password, saltRounds, async (err, hash) => {
     //Check if the user with the same email already exists in the database.
@@ -83,33 +78,20 @@ app.post("/register", async (req, res) => {
       await sendOtp(req, res, subject, msg, otp);
 
       //Create a new user object using the data provided in the request body.
-      let newUser;
-      if (isManager) {
-        newUser = new Model({
-          firstName: firstName,
-          lastName: lastName,
-          email: email,
-          firmName: firmName,
-          designation: designation,
-          password: hash,
-          users: [],
-          totalTasks: 0,
-          otp: otp,
-          isVerified: false,
-        });
-      } else if (!isManager) {
-        newUser = new Model({
-          firstName: firstName,
-          lastName: lastName,
-          designation: designation,
-          email: email,
-          password: hash,
-          totalTasks: 0,
-          completeTasks: 0,
-          otp: otp,
-          isVerified: false,
-        });
-      }
+
+      const newUser = new Model({
+        firstName: firstName,
+        lastName: lastName,
+        email: email,
+        firmName: isManager === "true" ? firmName : undefined,
+        designation: designation,
+        password: hash,
+        users: isManager === "true" ? [] : undefined,
+        totalTasks: 0,
+        completeTasks: isManager === "true" ? undefined : 0,
+        otp: otp,
+        isVerified: false,
+      });
 
       //Save the newly created user object to the database as a non-verified user.
       newUser
@@ -142,12 +124,8 @@ app.post("/validate-email", async (req, res) => {
   //Extract the email and OTP from the request body.
   const { email, otp, isManager } = req.body;
 
-  let Model;
-  if (isManager === "true") {
-    Model = Manager;
-  } else if (isManager === "false") {
-    Model = User;
-  }
+  const Model = isManager === "true" ? Manager : User;
+
   try {
     //Find the user with the given email address in the database.
     const foundUser = await Model.findOne({ email: email });
@@ -180,38 +158,30 @@ app.post("/validate-email", async (req, res) => {
 app.post("/login", async function (req, res) {
   const { email, password, isManager } = req.body;
 
-  let Model;
-  if (isManager === "true") {
-    Model = Manager;
-  } else {
-    Model = User;
-  }
+  const Model = isManager === "true" ? Manager : User;
 
   _hash(password, saltRounds, async (err, hash) => {
     if (err) console.log(err);
     try {
       const foundUser = await Model.findOne({ email: email });
 
-      if (foundUser) {
-        if (!foundUser.isVerified) {
-          return res
-            .status(402)
-            .send({ message: "User must verify the email" });
-        }
-
-        const comparison = await compare(password, foundUser.password);
-        if (comparison) {
-          return res.status(200).send({
-            message: "Login successful",
-            body: {
-              model: foundUser,
-            },
-          });
-        } else {
-          return res.status(401).send({ message: "Password does not match" });
-        }
-      } else {
+      if (!foundUser) {
         return res.status(206).send({ message: "User not found" });
+      }
+      if (!foundUser.isVerified) {
+        return res.status(402).send({ message: "User must verify the email" });
+      }
+
+      const comparison = await compare(password, foundUser.password);
+      if (comparison) {
+        return res.status(200).send({
+          message: "Login successful",
+          body: {
+            model: foundUser,
+          },
+        });
+      } else {
+        return res.status(401).send({ message: "Password does not match" });
       }
     } catch (err) {
       console.log("login - catch error = ", err);
@@ -223,10 +193,8 @@ app.post("/login", async function (req, res) {
 // Endpoint for handling forgot password requests
 app.post("/forgot-password", async (req, res) => {
   const { email, isManager } = req.body;
-  let Model;
-  if (isManager) {
-    Model = Manager;
-  } else if (!isManager) Model = User;
+  
+  const Model = isManager === "true" ? Manager : User;
 
   // Find the user associated with the given email
   const foundUser = await Model.findOne({ email: email });
@@ -248,10 +216,7 @@ app.post("/forgot-password", async (req, res) => {
 app.post("/reset-password", async (req, res) => {
   // email, otp and password that came from front end
   const { email, otp, password, isManager } = req.body;
-  let Model;
-  if (isManager) {
-    Model = Manager;
-  } else if (!isManager) Model = User;
+  const Model = isManager === "true" ? Manager : User;
 
   // generate a hashed password from the plain text password
   _hash(password, saltRounds, async (err, hash) => {
@@ -262,13 +227,7 @@ app.post("/reset-password", async (req, res) => {
       // check if the OTP provided by the user matches the OTP in the database
       if (found.otp === otp) {
         // update the user's password with the new hashed password
-        await Model.findOneAndUpdate({ email: email }, { password: hash }).then(
-          async () => {
-            // delete the OTP from the user's record in the database
-            await Model.findOneAndUpdate({ email: email }, { otp: null });
-          }
-        );
-        // res.send("Password updated successfully");
+        await Model.findOneAndUpdate({ email: email }, { password: hash, otp: null });
         res.status(200).send({ message: "Password updated successfully" });
       } else {
         res.status(401).send({ message: "Wrong otp" });
@@ -424,7 +383,6 @@ app.post("/add-task", async (req, res) => {
   }
 });
 
-//TODO: check how to update whole JSON object in findOneAndUpdate
 app.post("/edit-task", async (req, res) => {
   const {
     _id,
@@ -452,6 +410,8 @@ app.post("/edit-task", async (req, res) => {
         isPersonal: isPersonal,
       }
     );
+
+    res.status(200).send({message: "Task edited successfully"});
   } catch (err) {
     console.log(err);
     res.send(err);
@@ -470,14 +430,10 @@ app.post("/update-user-profile", async (req, res) => {
     designation,
   } = req.body;
 
-  let Model;
-
-  // Determine the model to use based on the value of "isManager" field
-  if (isManager === "true") Model = Manager;
-  else if (isManager === "false") Model = User;
+  const Model = isManager === "true" ? Manager : User;
   try {
     // Update the user profile using the selected model and the provided fields
-    const updatedUser = await Model.updateOne(
+    const updatedUser = await Model.findOneAndUpdate(
       { email: email },
       {
         firmName: firmName,
@@ -488,18 +444,23 @@ app.post("/update-user-profile", async (req, res) => {
         designation: designation,
       }
     );
+    
 
     // If the user is not found, send an error response with status code 402
     if (!updatedUser) {
-      res.status(402).send({ message: "User not found" });
+      return res.status(402).send({ message: "User not found" });
     }
 
     // Send a success response with status code 200
-    res.status(200).send({ message: "User updated successfully", user: updatedUser });
+    res
+      .status(200)
+      .send({ message: "User updated successfully", user: updatedUser });
   } catch (err) {
     // If an error occurs, log the error and send an error response with status code 500
     console.log(err);
-    res.status(500).send({ message: "Error while updating the user:", error: err });
+    res
+      .status(500)
+      .send({ message: "Error while updating the user:", error: err });
   }
 });
 
