@@ -55,7 +55,6 @@ const managerSchema = new mongoose.Schema(
 
 //? for personal tasks, status -> inProgress,completed,runningLate,aborted.
 //? for org tasks, status -> assigned,inProgress,completed,approved,runningLate,underReview
-//! add field for last Remark
 const taskSchema = new mongoose.Schema(
   {
     email: String,
@@ -64,21 +63,26 @@ const taskSchema = new mongoose.Schema(
     start: String,
     end: String,
     status: String,
+    lastRemark: {
+      _id: { type: String, autoCreate: false },
+        email: String,
+        message: String,
+        dateTime: String,
+    },
     isCompleted: Boolean,
     isPersonal: Boolean,
   },
   { versionKey: false }
 );
 
-//! Needs to be tested
-//TODO: Make get,post routes
-//TODO: @Rahul make task and remarks coordinate with each other
 const remarkSchema = new mongoose.Schema(
   {
+    //? for .get '_id' is required:
+    _id: { type: String, autoCreate: false },
+    task_id: String,
     remarks: [
       {
-        //? for .get '_id' is required:
-        task_id: String,
+        _id: { type: String, autoCreate: false },
         email: String,
         message: String,
         dateTime: String,
@@ -91,6 +95,6 @@ const remarkSchema = new mongoose.Schema(
 const User = new mongoose.model("User", userSchema);
 const Manager = new mongoose.model("Manager", managerSchema);
 const Task = new mongoose.model("Task", taskSchema);
-const Remarks = new mongoose.model("Remarks", remarkSchema);
+const Remark = new mongoose.model("Remarks", remarkSchema);
 
-export { User, Task, Manager, Remarks };
+export { User, Task, Manager, Remark };
