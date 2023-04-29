@@ -452,7 +452,7 @@ app.post("/add-task", async (req, res) => {
       description: description,
       start: start,
       end: end,
-      status: isPersonal === "true" ? "Started" : "Assigned", // assigned,inProgress,completed,approved,runningLate
+      status: isPersonal === "true" ? "New" : "Assigned", // assigned,inProgress,completed,approved,runningLate
       isCompleted: false,
       isPersonal: isPersonal === "true" ? true : false,
     });
