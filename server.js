@@ -10,7 +10,7 @@ import { hash as _hash, compare } from "bcrypt";
 const saltRounds = 10;
 
 import bodyParser from "body-parser";
-import { User, Manager, Task } from "./database/database.js";
+import { User, Manager, Task, Remark } from "./database/database.js";
 import { sendOtp } from "./mail/otpValidation.js";
 
 const app = express();
@@ -193,7 +193,7 @@ app.post("/login", async function (req, res) {
 // Endpoint for handling forgot password requests
 app.post("/forgot-password", async (req, res) => {
   const { email, isManager } = req.body;
-  
+
   const Model = isManager === "true" ? Manager : User;
 
   // Find the user associated with the given email
@@ -227,7 +227,10 @@ app.post("/reset-password", async (req, res) => {
       // check if the OTP provided by the user matches the OTP in the database
       if (found.otp === otp) {
         // update the user's password with the new hashed password
-        await Model.findOneAndUpdate({ email: email }, { password: hash, otp: null });
+        await Model.findOneAndUpdate(
+          { email: email },
+          { password: hash, otp: null }
+        );
         res.status(200).send({ message: "Password updated successfully" });
       } else {
         res.status(401).send({ message: "Wrong otp" });
@@ -411,7 +414,7 @@ app.post("/edit-task", async (req, res) => {
       }
     );
 
-    res.status(200).send({message: "Task edited successfully"});
+    res.status(200).send({ message: "Task edited successfully" });
   } catch (err) {
     console.log(err);
     res.send(err);
@@ -444,7 +447,6 @@ app.post("/update-user-profile", async (req, res) => {
         designation: designation,
       }
     );
-    
 
     // If the user is not found, send an error response with status code 402
     if (!updatedUser) {
@@ -461,6 +463,54 @@ app.post("/update-user-profile", async (req, res) => {
     res
       .status(500)
       .send({ message: "Error while updating the user:", error: err });
+  }
+});
+
+app.post("/get-remarks", async (req, res) => {
+  //* [task_id] is the ID of the chosen task -> can be changed as  [_id] as per requirement
+  const { task_id } = req.body;
+
+  try {
+    const remarks = await Remark.find({ task_id: task_id });
+    return res.status(200).send({ remarks: remarks[0].remarks });
+  } catch (err) {
+    console.log(err);
+    res
+      .status(500)
+      .send({ message: "Error while getting the remarks.", error: err });
+  }
+});
+
+app.post("/add-remark", async (req, res) => {
+  const { task_id, email, message, dateTime } = req.body;
+
+  const addObject = { email: email, message: message, dateTime: dateTime };
+  
+  try {
+    const remark = await Remark.findOneAndUpdate(
+      { task_id: task_id },
+      {
+        $push: {
+          remarks: addObject,
+        },
+      },
+      { new: true, upsert: true }
+    );
+
+    //* adding the latest remark in the Task model
+    await Task.findOneAndUpdate(
+      { _id: task_id },
+      { $set: { lastRemark: addObject } }
+    );
+
+    return res
+      .status(200)
+      .send({ message: "Remark added successfully.", remark: remark });
+  } catch (err) {
+    console.log(err);
+    res
+      .status(500)
+      .send({ message: "Error while adding the remark", error: err });
   }
 });
 
