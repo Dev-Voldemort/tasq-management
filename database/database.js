@@ -22,6 +22,7 @@ const userSchema = new mongoose.Schema(
     designation: String,
     profilePicture: String,
     totalTasks: Number,
+    profilePicture: String,
     completeTasks: Number,
     otp: String,
     isVerified: Boolean,
@@ -54,6 +55,7 @@ const managerSchema = new mongoose.Schema(
 
 //? for personal tasks, status -> inProgress,completed,runningLate,aborted.
 //? for org tasks, status -> assigned,inProgress,completed,approved,runningLate,underReview
+//! add field for last Remark
 const taskSchema = new mongoose.Schema(
   {
     email: String,
