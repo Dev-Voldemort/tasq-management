@@ -164,10 +164,10 @@ app.post("/validate-email", async (req, res) => {
         );
         //Send a response with a status code of 200 and a message of "Email has been verified successfully".
         //? @Kunal check
-        res.status(200).send({ message: "Emial has been verified successfully" })
+        res.status(200).send({ message: "Email has been verified successfully" })
       } else {
         //If the OTP does not match the OTP stored in the user object, send a response with a message of "wrong otp".
-        res.send("wrong otp");
+        res.status(401).send({ message: "wrong otp" });
       }
     }
   } catch (err) {
@@ -203,7 +203,7 @@ app.post("/login", async function (req, res) {
         if (comparison) {
           //? @kunal check
           return res.status(200).send({
-            message: "Login successfull",
+            message: "Login successful",
             body: {
               model: foundUser
             }
@@ -281,7 +281,7 @@ app.post("/reset-password", async (req, res) => {
         //? @Kunal check
         res.status(200).send({ message: "Password updated successfully", })
       } else {
-       //? @Kunal check
+        //? @Kunal check
         res.status(401).send({ message: "Wrong otp" })
       }
     } catch (error) {
@@ -397,24 +397,47 @@ app.post("/send-otp", async (req, res) => {
   }
 });
 
-app.get("/get-task", async (req, res) => {
-  const { email, isPersonal } = req.body;
+app.post("/get-task", async (req, res) => {
 
-  try {
-    const foundTasks = await Task.find({
-      email: email,
-      isPersonal: isPersonal,
-    });
-    if (!foundTasks) {
-      res.send("No tasks found");
-    } else {
-      res.send({
-        tasks: foundTasks,
+  console.log("get-task - req.body:", req.body);
+  const { _id, email, isPersonal } = req.body;
+
+  if (_id) {
+    try {
+      const foundTasks = await Task.find({
+        _id: _id,
+        // email: email,
+        // isPersonal: isPersonal,
       });
+      if (!foundTasks) {
+        res.send("No tasks found");
+      } else {
+        res.send({
+          tasks: foundTasks,
+        });
+      }
+    } catch (err) {
+      console.log(err);
+      res.send("Error getting the tasks");
     }
-  } catch (err) {
-    console.log(err);
-    res.send("Error getting the tasks");
+  }
+  else {
+    try {
+      const foundTasks = await Task.find({
+        email: email,
+        isPersonal: isPersonal === "true" ? true : false,
+      });
+      if (!foundTasks) {
+        res.send("No tasks found");
+      } else {
+        res.send({
+          tasks: foundTasks,
+        });
+      }
+    } catch (err) {
+      console.log(err);
+      res.send("Error getting the tasks");
+    }
   }
 });
 
