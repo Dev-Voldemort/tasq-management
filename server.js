@@ -1,4 +1,5 @@
 //! change statusCode style
+//! update user profile API
 
 import dotenv from "dotenv";
 dotenv.config();
@@ -8,7 +9,8 @@ import ejs, { render } from "ejs";
 import { hash as _hash, compare } from "bcrypt";
 const saltRounds = 10;
 
-import { User, Manager, Task } from "./database/database.js";
+import bodyParser from "body-parser";
+import { User, Manager, Task, Remark } from "./database/database.js";
 import { sendOtp } from "./mail/otpValidation.js";
 
 const app = express();
@@ -16,8 +18,11 @@ const app = express();
 app.engine("html", ejs.renderFile);
 app.use(express.urlencoded({ extended: true }));
 
+//* it is for testing in Postman
+app.use(bodyParser.json());
+
 app.get("/", function (req, res) {
-  res.status(200).send("Hello Worldddd");
+  res.status(200).send("Hello World");
 });
 
 app.get("/register", function (req, res) {
@@ -45,7 +50,6 @@ app.post("/register", async (req, res) => {
   const {
     firstName,
     lastName,
-    userName,
     email,
     password,
     isManager,
@@ -53,21 +57,15 @@ app.post("/register", async (req, res) => {
     designation,
   } = req.body;
 
-  let Model;
-  // const bool = Boolean(isManager);
-  if (isManager === "true") {
-    Model = Manager;
-  } else {
-    Model = User;
-  }
-  console.log("Model: ", Model, "isManager type: ", typeof (isManager));
+  const Model = isManager === "true" ? Manager : User;
+
   //Hash the password using a third-party library and a salt value. The callback function is executed once the hash is complete or an error occurs.
   _hash(password, saltRounds, async (err, hash) => {
     //Check if the user with the same email already exists in the database.
-    console.log(req.body);
     const foundUser = await Model.findOne({ email: email });
 
     //If the email already exists and the user has not been verified, send a response with a status code of 206 and a message of "Email exists".
+    //! change structure and optimize it
     if (foundUser) {
       if (!foundUser.isVerified) {
         return res.status(206).send({ message: "User must verify the email" });
@@ -80,35 +78,20 @@ app.post("/register", async (req, res) => {
       await sendOtp(req, res, subject, msg, otp);
 
       //Create a new user object using the data provided in the request body.
-      let newUser;
-      if (isManager) {
-        newUser = new Model({
-          firstName: firstName,
-          lastName: lastName,
-          userName: userName,
-          email: email,
-          firmName: firmName,
-          designation: designation,
-          password: hash,
-          users: [],
-          totalTasks: 0,
-          otp: otp,
-          isVerified: false,
-        });
-      } else if (!isManager) {
-        newUser = new Model({
-          firstName: firstName,
-          lastName: lastName,
-          userName: userName,
-          designation: designation,
-          email: email,
-          password: hash,
-          totalTasks: 0,
-          completeTasks: 0,
-          otp: otp,
-          isVerified: false,
-        });
-      }
+
+      const newUser = new Model({
+        firstName: firstName,
+        lastName: lastName,
+        email: email,
+        firmName: isManager === "true" ? firmName : undefined,
+        designation: designation,
+        password: hash,
+        users: isManager === "true" ? [] : undefined,
+        totalTasks: 0,
+        completeTasks: isManager === "true" ? undefined : 0,
+        otp: otp,
+        isVerified: false,
+      });
 
       //Save the newly created user object to the database as a non-verified user.
       newUser
@@ -119,8 +102,8 @@ app.post("/register", async (req, res) => {
           res.status(200).send({
             message: "User registered",
             body: {
-              user: newUser
-            }
+              user: newUser,
+            },
           })
         )
         .catch((err) => {
@@ -128,6 +111,7 @@ app.post("/register", async (req, res) => {
           console.error(err);
           return res.status(500).json({
             message: "Internal server error",
+            error: err,
           });
         });
     }
@@ -140,12 +124,7 @@ app.post("/validate-email", async (req, res) => {
   //Extract the email and OTP from the request body.
   const { email, otp, isManager } = req.body;
 
-  let Model;
-  if (isManager === "true") {
-    Model = Manager;
-  } else if (isManager === "false") {
-    Model = User;
-  }
+  const Model = isManager === "true" ? Manager : User;
 
   try {
     //Find the user with the given email address in the database.
@@ -163,8 +142,9 @@ app.post("/validate-email", async (req, res) => {
           { $set: { otp: null, isVerified: true } }
         );
         //Send a response with a status code of 200 and a message of "Email has been verified successfully".
-        //? @Kunal check
-        res.status(200).send({ message: "Email has been verified successfully" })
+        res
+          .status(200)
+          .send({ message: "Email has been verified successfully" });
       } else {
         //If the OTP does not match the OTP stored in the user object, send a response with a message of "wrong otp".
         res.status(401).send({ message: "wrong otp" });
@@ -176,68 +156,50 @@ app.post("/validate-email", async (req, res) => {
 });
 
 app.post("/login", async function (req, res) {
-
   const { email, password, isManager } = req.body;
 
-  let Model;
-  if (isManager === "true") {
-    Model = Manager;
-  } else {
-    Model = User;
-  }
-  console.log(typeof isManager);
-  console.log("Model", Model, "isManager", isManager);
+  const Model = isManager === "true" ? Manager : User;
 
   _hash(password, saltRounds, async (err, hash) => {
     if (err) console.log(err);
     try {
       const foundUser = await Model.findOne({ email: email });
 
-      if (foundUser) {
-        if (!foundUser.isVerified) {
-          //? @Kunal check
-          return res.status(402).send({ message: "User must verify the email" })
-        }
+      if (!foundUser) {
+        return res.status(206).send({ message: "User not found" });
+      }
+      if (!foundUser.isVerified) {
+        return res.status(402).send({ message: "User must verify the email" });
+      }
 
-        const comparison = await compare(password, foundUser.password);
-        if (comparison) {
-          //? @kunal check
-          return res.status(200).send({
-            message: "Login successful",
-            body: {
-              model: foundUser
-            }
-          })
-        } else {
-
-          return res.status(401).send({ message: "Password does not match" })
-        }
+      const comparison = await compare(password, foundUser.password);
+      if (comparison) {
+        return res.status(200).send({
+          message: "Login successful",
+          body: {
+            model: foundUser,
+          },
+        });
       } else {
-        //? @Kunal check
-        return res.status(206).send({ message: "User not found" })
+        return res.status(401).send({ message: "Password does not match" });
       }
     } catch (err) {
       console.log("login - catch error = ", err);
-      //? @Kunal check
-      return res.status(206).send({ message: err })
+      return res.status(206).send({ message: err });
     }
   });
 });
 
 // Endpoint for handling forgot password requests
-//! use it for org-user login as well
 app.post("/forgot-password", async (req, res) => {
   const { email, isManager } = req.body;
-  let Model;
-  if (isManager) {
-    Model = Manager;
-  } else if (!isManager) Model = User;
+
+  const Model = isManager === "true" ? Manager : User;
 
   // Find the user associated with the given email
   const foundUser = await Model.findOne({ email: email });
   // If the user is not found, return an error response
   if (!foundUser) {
-    //? @Kunal check
     return res.status(404).send({ message: "User not found" });
   }
 
@@ -245,7 +207,6 @@ app.post("/forgot-password", async (req, res) => {
   const otp = generate(6, { upperCase: false, specialChars: false });
 
   // Send the OTP to the user's email address
-  //TODO change according to sendOtp structure
   const msg = `Your OTP for password reset is ${otp}`;
   const subject = "Reset password OTP";
   await sendOtp(req, res, subject, msg, otp);
@@ -255,13 +216,8 @@ app.post("/forgot-password", async (req, res) => {
 app.post("/reset-password", async (req, res) => {
   // email, otp and password that came from front end
   const { email, otp, password, isManager } = req.body;
-  console.log("isMana:", isManager);
-  let Model;
-  if (isManager) {
-    Model = Manager;
-  } else if (!isManager) Model = User;
+  const Model = isManager === "true" ? Manager : User;
 
-  console.log("model:", Model);
   // generate a hashed password from the plain text password
   _hash(password, saltRounds, async (err, hash) => {
     try {
@@ -271,32 +227,22 @@ app.post("/reset-password", async (req, res) => {
       // check if the OTP provided by the user matches the OTP in the database
       if (found.otp === otp) {
         // update the user's password with the new hashed password
-        await Model.findOneAndUpdate({ email: email }, { password: hash }).then(
-          async () => {
-            // delete the OTP from the user's record in the database
-            await Model.findOneAndUpdate({ email: email }, { otp: null });
-          }
+        await Model.findOneAndUpdate(
+          { email: email },
+          { password: hash, otp: null }
         );
-        // res.send("Password updated successfully");
-        //? @Kunal check
-        res.status(200).send({ message: "Password updated successfully", })
+        res.status(200).send({ message: "Password updated successfully" });
       } else {
-        //? @Kunal check
-        res.status(401).send({ message: "Wrong otp" })
+        res.status(401).send({ message: "Wrong otp" });
       }
     } catch (error) {
       console.log(error);
-      //? @Kunal check
       res.status(401).send({ message: "OTP is invalid or has expired" });
     }
   });
 });
 
 app.post("/add-user", async (req, res) => {
-
-  console.log("add-user - req.body:", req.body);
-  //TODO: add assignee email and designation -> through which user must reg/login
-
   // * [managerEmail] = email of the manager who is adding the user
   // * [email] = new email of user
   // * [emailTo] = email of the user to be added
@@ -339,24 +285,6 @@ app.post("/add-user", async (req, res) => {
       { $set: { users: users } }
     );
 
-    // //Generate a six-digit OTP (one-time password) using a third-party library and send it to the user's email address for verification.
-    // const newUser = new User({
-    //   firstName: firstName,
-    //   lastName: lastName,
-    //   designation: designation,
-    //   email: emailTo,
-    //   password: String,
-    //   totalTasks: 0,
-    //   completeTasks: 0,
-    //   otp: null,
-    //   isVerified: false,
-    // });
-
-    // await newUser.save().catch((err) => {
-    //   //If there is an error while saving the user object to the database, log the error to the console.
-    //   console.error(err);
-    // });
-    // res.send("User added successfully");
     _hash(userPassword, saltRounds, async (err, hash) => {
       //Generate a six-digit OTP (one-time password) using a third-party library and send it to the user's email address for verification.
       const newUser = new User({
@@ -375,8 +303,7 @@ app.post("/add-user", async (req, res) => {
         //If there is an error while saving the user object to the database, log the error to the console.
         console.error(err);
       });
-      //? @Kunal check
-      res.status(200).send({ message: "User added successfully" })
+      res.status(200).send({ message: "User added successfully" });
     });
   } catch (err) {
     console.log("Error in adding user: ", err);
@@ -398,7 +325,6 @@ app.post("/send-otp", async (req, res) => {
 });
 
 app.post("/get-task", async (req, res) => {
-
   console.log("get-task - req.body:", req.body);
   const { _id, email, isPersonal } = req.body;
 
@@ -406,8 +332,6 @@ app.post("/get-task", async (req, res) => {
     try {
       const foundTasks = await Task.find({
         _id: _id,
-        // email: email,
-        // isPersonal: isPersonal,
       });
       if (!foundTasks) {
         res.send("No tasks found");
@@ -420,8 +344,7 @@ app.post("/get-task", async (req, res) => {
       console.log(err);
       res.send("Error getting the tasks");
     }
-  }
-  else {
+  } else {
     try {
       const foundTasks = await Task.find({
         email: email,
@@ -446,7 +369,6 @@ app.post("/add-task", async (req, res) => {
 
   try {
     const newTask = new Task({
-      // _id: _id,
       email: email,
       title: title,
       description: description,
@@ -458,14 +380,12 @@ app.post("/add-task", async (req, res) => {
     });
 
     await newTask.save();
-    //? @Kunal check
-    res.status(200).send({ message: "Task added successfully" })
+    res.status(200).send({ message: "Task added successfully" });
   } catch (err) {
     console.log(err);
   }
 });
 
-//TODO: check how to update whole JSON object in findOneAndUpdate
 app.post("/edit-task", async (req, res) => {
   const {
     _id,
@@ -493,9 +413,104 @@ app.post("/edit-task", async (req, res) => {
         isPersonal: isPersonal,
       }
     );
+
+    res.status(200).send({ message: "Task edited successfully" });
   } catch (err) {
     console.log(err);
     res.send(err);
+  }
+});
+
+// Handle POST requests to "/update-user-profile" endpoint
+app.post("/update-user-profile", async (req, res) => {
+  const {
+    email,
+    firstName,
+    lastName,
+    profilePicture,
+    isManager,
+    firmName,
+    designation,
+  } = req.body;
+
+  const Model = isManager === "true" ? Manager : User;
+  try {
+    // Update the user profile using the selected model and the provided fields
+    const updatedUser = await Model.findOneAndUpdate(
+      { email: email },
+      {
+        firmName: firmName,
+        firstName: firstName,
+        lastName: lastName,
+        profilePicture: profilePicture,
+        firmName: firmName,
+        designation: designation,
+      }
+    );
+
+    // If the user is not found, send an error response with status code 402
+    if (!updatedUser) {
+      return res.status(402).send({ message: "User not found" });
+    }
+
+    // Send a success response with status code 200
+    res
+      .status(200)
+      .send({ message: "User updated successfully", user: updatedUser });
+  } catch (err) {
+    // If an error occurs, log the error and send an error response with status code 500
+    console.log(err);
+    res
+      .status(500)
+      .send({ message: "Error while updating the user:", error: err });
+  }
+});
+
+app.post("/get-remarks", async (req, res) => {
+  //* [task_id] is the ID of the chosen task -> can be changed as  [_id] as per requirement
+  const { task_id } = req.body;
+
+  try {
+    const remarks = await Remark.find({ task_id: task_id });
+    return res.status(200).send({ remarks: remarks[0].remarks });
+  } catch (err) {
+    console.log(err);
+    res
+      .status(500)
+      .send({ message: "Error while getting the remarks.", error: err });
+  }
+});
+
+app.post("/add-remark", async (req, res) => {
+  const { task_id, email, message, dateTime } = req.body;
+
+  const addObject = { email: email, message: message, dateTime: dateTime };
+  
+  try {
+    const remark = await Remark.findOneAndUpdate(
+      { task_id: task_id },
+      {
+        $push: {
+          remarks: addObject,
+        },
+      },
+      { new: true, upsert: true }
+    );
+
+    //* adding the latest remark in the Task model
+    await Task.findOneAndUpdate(
+      { _id: task_id },
+      { $set: { lastRemark: addObject } }
+    );
+
+    return res
+      .status(200)
+      .send({ message: "Remark added successfully.", remark: remark });
+  } catch (err) {
+    console.log(err);
+    res
+      .status(500)
+      .send({ message: "Error while adding the remark", error: err });
   }
 });
 

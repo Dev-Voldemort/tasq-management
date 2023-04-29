@@ -16,10 +16,13 @@ const userSchema = new mongoose.Schema(
   {
     firstName: String,
     lastName: String,
-    designation: String,
     email: String,
     password: String,
+    firmName: String,
+    designation: String,
+    profilePicture: String,
     totalTasks: Number,
+    profilePicture: String,
     completeTasks: Number,
     otp: String,
     isVerified: Boolean,
@@ -31,14 +34,15 @@ const managerSchema = new mongoose.Schema(
   {
     firstName: String,
     lastName: String,
-    firmName: String,
-    designation: String,
     email: String,
     password: String,
+    firmName: String,
+    designation: String,
+    profilePicture: String,
     totalTasks: Number,
     users: [
       {
-        _id: {type:String,autoCreate: false},
+        _id: { type: String, autoCreate: false },
         email: String,
         designation: String,
       },
@@ -53,28 +57,32 @@ const managerSchema = new mongoose.Schema(
 //? for org tasks, status -> assigned,inProgress,completed,approved,runningLate,underReview
 const taskSchema = new mongoose.Schema(
   {
-    // _id: String,
     email: String,
     title: String,
     description: String,
     start: String,
     end: String,
-    status: String, 
+    status: String,
+    lastRemark: {
+      _id: { type: String, autoCreate: false },
+        email: String,
+        message: String,
+        dateTime: String,
+    },
     isCompleted: Boolean,
     isPersonal: Boolean,
   },
   { versionKey: false }
 );
 
-//! Needs to be tested
-//TODO: Make get,post routes
-//TODO: @Rahul make task and remarks coordinate with each other
 const remarkSchema = new mongoose.Schema(
   {
+    //? for .get '_id' is required:
+    _id: { type: String, autoCreate: false },
+    task_id: String,
     remarks: [
       {
-        //? for .get '_id' is required:
-        task_id: String,
+        _id: { type: String, autoCreate: false },
         email: String,
         message: String,
         dateTime: String,
@@ -84,10 +92,9 @@ const remarkSchema = new mongoose.Schema(
   { versionKey: false }
 );
 
-
 const User = new mongoose.model("User", userSchema);
 const Manager = new mongoose.model("Manager", managerSchema);
 const Task = new mongoose.model("Task", taskSchema);
-const Remarks = new mongoose.model("Remarks", remarkSchema);
+const Remark = new mongoose.model("Remarks", remarkSchema);
 
-export { User, Task, Manager, Remarks };
+export { User, Task, Manager, Remark };
