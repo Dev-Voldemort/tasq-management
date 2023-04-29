@@ -16,9 +16,11 @@ const userSchema = new mongoose.Schema(
   {
     firstName: String,
     lastName: String,
-    designation: String,
     email: String,
     password: String,
+    firmName: String,
+    designation: String,
+    profilePicture: String,
     totalTasks: Number,
     completeTasks: Number,
     otp: String,
@@ -31,14 +33,15 @@ const managerSchema = new mongoose.Schema(
   {
     firstName: String,
     lastName: String,
-    firmName: String,
-    designation: String,
     email: String,
     password: String,
+    firmName: String,
+    designation: String,
+    profilePicture: String,
     totalTasks: Number,
     users: [
       {
-        _id: {type:String,autoCreate: false},
+        _id: { type: String, autoCreate: false },
         email: String,
         designation: String,
       },
@@ -53,13 +56,12 @@ const managerSchema = new mongoose.Schema(
 //? for org tasks, status -> assigned,inProgress,completed,approved,runningLate,underReview
 const taskSchema = new mongoose.Schema(
   {
-    // _id: String,
     email: String,
     title: String,
     description: String,
     start: String,
     end: String,
-    status: String, 
+    status: String,
     isCompleted: Boolean,
     isPersonal: Boolean,
   },
@@ -83,7 +85,6 @@ const remarkSchema = new mongoose.Schema(
   },
   { versionKey: false }
 );
-
 
 const User = new mongoose.model("User", userSchema);
 const Manager = new mongoose.model("Manager", managerSchema);
