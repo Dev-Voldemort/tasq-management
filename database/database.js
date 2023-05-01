@@ -27,7 +27,9 @@ const userSchema = new mongoose.Schema(
     otp: String,
     isVerified: Boolean,
   },
-  { versionKey: false }
+  { versionKey: false },
+  { typeKey: '$type' }
+
 );
 
 const managerSchema = new mongoose.Schema(

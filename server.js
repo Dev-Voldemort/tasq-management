@@ -485,7 +485,7 @@ app.post("/add-remark", async (req, res) => {
   const { task_id, email, message, dateTime } = req.body;
 
   const addObject = { email: email, message: message, dateTime: dateTime };
-  
+
   try {
     const remark = await Remark.findOneAndUpdate(
       { task_id: task_id },
@@ -513,6 +513,32 @@ app.post("/add-remark", async (req, res) => {
       .send({ message: "Error while adding the remark", error: err });
   }
 });
+
+app.post("/delete-user", async (req, res) => {
+  const { email, userEmail } = req.body;
+  // const userArray = {$pull: { _id: _id}}
+
+  try {
+    const deleteUser = await User.deleteOne({ email: email })
+    const deleteUserArray = await Manager.updateOne( { }, {$pull: { users: { email: userEmail }}} )
+    if (deleteUser && deleteUserArray) {
+      res.status(200).send({ message: "User has been deleted successfully" })
+    }
+    else {
+      res.status(402).send({ message: "User not found" })
+    }
+  }
+  catch (err) {
+    console.log(err);
+    res
+      .status(500)
+      .send({ message: "Error while deleting the user", error: err });
+  }
+})
+
+app.get("/delete-user", function (req, res){
+  res.render("delete-user.html")
+})
 
 app.listen(3000, function () {
   console.log("Server started on port 3000");
