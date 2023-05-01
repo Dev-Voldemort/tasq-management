@@ -45,6 +45,10 @@ app.get("/add-user", function (req, res) {
   res.render("add-user.html");
 });
 
+app.get("/delete-user", function (req, res) {
+  res.render("delete-user.html");
+});
+
 // This route handler handles a POST request to the "/register" endpoint to register a new user.
 app.post("/register", async (req, res) => {
   const {
@@ -258,6 +262,7 @@ app.post("/add-user", async (req, res) => {
     note,
     firstName,
     lastName,
+    firmName,
   } = req.body;
   const userPassword = generate(10, { upperCase: true, specialChars: true });
 
@@ -293,6 +298,7 @@ app.post("/add-user", async (req, res) => {
         designation: designation,
         email: emailTo,
         password: hash,
+        firmName: firmName,
         totalTasks: 0,
         completeTasks: 0,
         otp: null,
@@ -328,8 +334,7 @@ app.post("/get-task", async (req, res) => {
   console.log("get-task - req.body:", req.body);
   const { _id, email, isPersonal } = req.body;
 
-
-  console.log("id: typeof", typeof (_id));
+  console.log("id: typeof", typeof _id);
   /// check if _id is not empty
   if (_id !== "" && _id !== undefined) {
     console.log("_id:", _id);
@@ -477,7 +482,10 @@ app.post("/get-remarks", async (req, res) => {
 
   try {
     const remarks = await Remark.find({ task_id: task_id });
-    /// TODO : @Meet pls check if the remarks[0].remarks is not undefined or null initially. pls put undefined check here
+    if (remarks === undefined || remarks === null || remarks.length === 0) {
+      return res.status(200).send({ remarks: [] });
+    }
+    // TODO : @Meet pls check if the remarks[0].remarks is not undefined or null initially. pls put undefined check here
     return res.status(200).send({ remarks: remarks[0].remarks });
   } catch (err) {
     console.log(err);
@@ -525,26 +533,44 @@ app.post("/delete-user", async (req, res) => {
   // const userArray = {$pull: { _id: _id}}
 
   try {
-    const deleteUser = await User.deleteOne({ email: email })
-    const deleteUserArray = await Manager.updateOne( { }, {$pull: { users: { email: userEmail }}} )
+    const deleteUser = await User.deleteOne({ email: email });
+    const deleteUserArray = await Manager.updateOne(
+      {},
+      { $pull: { users: { email: userEmail } } }
+    );
     if (deleteUser && deleteUserArray) {
-      res.status(200).send({ message: "User has been deleted successfully" })
+      res.status(200).send({ message: "User has been deleted successfully" });
+    } else {
+      res.status(402).send({ message: "User not found" });
     }
-    else {
-      res.status(402).send({ message: "User not found" })
-    }
-  }
-  catch (err) {
+  } catch (err) {
     console.log(err);
     res
       .status(500)
       .send({ message: "Error while deleting the user", error: err });
   }
-})
+});
 
-app.get("/delete-user", function (req, res){
-  res.render("delete-user.html")
-})
+app.get("/get-user-profile", async (req, res) => {
+  const { email, isManager } = req.query;
+
+  const Model = isManager === "true" ? Manager : User;
+
+  try {
+    const foundUser = await Model.findOne({ email: email });
+
+    if (!foundUser) {
+      return res.status(402).send({ message: "User not found" });
+    }
+
+    return res.status(200).send({ user: foundUser });
+  } catch (err) {
+    console.log(err);
+    res
+      .status(500)
+      .send({ message: "Error while getting the user profile", error: err });
+  }
+});
 
 app.listen(3000, function () {
   console.log("Server started on port 3000");
