@@ -477,6 +477,7 @@ app.post("/get-remarks", async (req, res) => {
 
   try {
     const remarks = await Remark.find({ task_id: task_id });
+    /// TODO : @Meet pls check if the remarks[0].remarks is not undefined or null initially. pls put undefined check here
     return res.status(200).send({ remarks: remarks[0].remarks });
   } catch (err) {
     console.log(err);
