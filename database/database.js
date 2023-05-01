@@ -22,7 +22,7 @@ const userSchema = new mongoose.Schema(
     designation: String,
     profilePicture: String,
     totalTasks: Number,
-    profilePicture: String,
+    // profilePicture: String,
     completeTasks: Number,
     otp: String,
     isVerified: Boolean,
