@@ -328,7 +328,11 @@ app.post("/get-task", async (req, res) => {
   console.log("get-task - req.body:", req.body);
   const { _id, email, isPersonal } = req.body;
 
-  if (_id) {
+
+  console.log("id: typeof", typeof (_id));
+  /// check if _id is not empty
+  if (_id !== "" && _id !== undefined) {
+    console.log("_id:", _id);
     try {
       const foundTasks = await Task.find({
         _id: _id,
@@ -345,6 +349,7 @@ app.post("/get-task", async (req, res) => {
       res.send("Error getting the tasks");
     }
   } else {
+    console.log("email:", email);
     try {
       const foundTasks = await Task.find({
         email: email,
@@ -409,15 +414,15 @@ app.post("/edit-task", async (req, res) => {
         start: start,
         end: end,
         status: status,
-        isCompleted: isCompleted,
-        isPersonal: isPersonal,
+        isCompleted: isCompleted === "true" ? true : false,
+        isPersonal: isPersonal === "true" ? true : false,
       }
     );
 
     res.status(200).send({ message: "Task edited successfully" });
   } catch (err) {
     console.log(err);
-    res.send(err);
+    res.status(400).send({ message: "Error editing the task" });
   }
 });
 
@@ -485,7 +490,7 @@ app.post("/add-remark", async (req, res) => {
   const { task_id, email, message, dateTime } = req.body;
 
   const addObject = { email: email, message: message, dateTime: dateTime };
-  
+
   try {
     const remark = await Remark.findOneAndUpdate(
       { task_id: task_id },
