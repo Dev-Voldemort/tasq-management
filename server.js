@@ -572,6 +572,25 @@ app.get("/get-user-profile", async (req, res) => {
   }
 });
 
+
+app.get("/statistics", async (req, res) => {
+  const { email, isManager } = req.body;
+  try {
+    const foundTasks = await Task.find({ email: email });
+    console.log(foundTasks);
+    if (!foundTasks) {
+      return res.status(402).send({ message: "User does not have any tasks yet!" });
+    }
+    return res.status(200).send({ tasks: foundTasks });
+  }
+  catch (err) {
+    console.log(err);
+    res
+      .status(500)
+      .send({ message: "Error while getting the user tasks", error: err });
+  }
+});
+
 app.listen(3000, function () {
   console.log("Server started on port 3000");
 });
