@@ -181,7 +181,7 @@ app.post("/login", async function (req, res) {
         return res.status(200).send({
           message: "Login successful",
           body: {
-            model: foundUser,
+            user: foundUser,
           },
         });
       } else {
