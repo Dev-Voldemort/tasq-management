@@ -573,7 +573,7 @@ app.get("/get-user-profile", async (req, res) => {
 });
 
 
-app.get("/statistics", async (req, res) => {
+app.post("/statistics", async (req, res) => {
   const { email, isManager } = req.body;
   try {
     const foundTasks = await Task.find({ email: email });
